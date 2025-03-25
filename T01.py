@@ -20,14 +20,15 @@ ion_1[:,0] /= 10
 ion_2 = np.genfromtxt("T01\\T01\\Ionisationskammer_2.csv", delimiter = ",")
 ion_2[:,0] = ion_2[0,0] - ion_2[:,0]
 ion_2[:,0] /= 10
-plt.errorbar(ion_1[:,0], ion_1[:,1], ion_1[:,2], label = "Messreihe 1", fmt = "o")
-plt.errorbar(ion_2[:,0], ion_2[:,1], ion_2[:,2], label = "Messreihe 2", fmt = "o")
+plt.errorbar(ion_1[:,0], ion_1[:,1], ion_1[:,2], label = "measurement 1", fmt = "o")
+plt.errorbar(ion_2[:,0], ion_2[:,1], ion_2[:,2], label = "measurement 2", fmt = "o")
 
 
-plt.ylabel("$U$ [$nA$]")
+plt.ylabel("$I$ [$nA$]")
 plt.xlabel("$d-d_0$ [$mm$]")
-plt.title("Ionisationskammer")
+plt.title("ionisation chamber")
 plt.legend()
+plt.savefig("ionisation_chamber.pdf")
 plt.show()
 
 #%% beta-absorber

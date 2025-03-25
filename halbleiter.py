@@ -511,9 +511,9 @@ print(R_max_hl_err)
 
 fig, ax = fig, ax = plt.subplots(2, 1, figsize=(10,7), layout = "tight",sharex=True, gridspec_kw={'height_ratios': [5, 2]})
 ax[0].plot(x_abs_lay_thick, integr_reach_model(x_abs_lay_thick, m_erf.values["a1"], m_erf.values["b1"], m_erf.values["c1"]))
-ax[0].plot(x_abs_lay_linfit, lin_approx, label = "tangent for $R_{max}$", color = "black", ls = "--")
+ax[0].plot(x_abs_lay_linfit, lin_approx, label = "tangent for $R_{ex}$", color = "black", ls = "--")
 ax[0].axhline(0, color = "silver", ls = "--")
-ax[0].scatter(R_max_hl, 0, color = "navy", label = "$R_{max}$ = " + f"({R_max_hl:.2f} +- {R_max_hl_err:.2f}) cm of air equivalent")
+ax[0].scatter(R_max_hl, 0, color = "navy", label = "$R_{ex}$ = " + f"({R_max_hl:.2f} +- {R_max_hl_err:.2f}) cm of air equivalent")
 
 ax[0].errorbar(tot_abs_lay_thi, integral_under_peak, integral_under_peak_err, fmt= ".", label = "numerically integrated area under Po-214-peaks")
 ax[0].set_title("numerically integrated area under Po-214-peaks, from $(peak- 3\sigma_{fit})$ to $(peak + 3\sigma_{fit})$")
@@ -545,5 +545,112 @@ plt.show()
 #TODO COLLIMATOR
 
 #%%collimator
+#TODO kollimator4.TKA ist doppelmessung von kollimator3.TKA
 
-coll0 = load_spectrum("axto-t1\\axto-t1\\axto-t1-halbleiter\\4 peaks.TKA")
+coll0 = load_spectrum("axto-t1\\axto-t1\\axto-t1-halbleiter\\kollimator0.TKA")
+coll1 = load_spectrum("axto-t1\\axto-t1\\axto-t1-halbleiter\\kollimator1.TKA")
+coll2 = load_spectrum("axto-t1\\axto-t1\\axto-t1-halbleiter\\kollimator2.TKA")
+coll3 = load_spectrum("axto-t1\\axto-t1\\axto-t1-halbleiter\\kollimator3.TKA")
+coll4 = load_spectrum("axto-t1\\axto-t1\\axto-t1-halbleiter\\kollimator4.TKA")
+coll5 = load_spectrum("axto-t1\\axto-t1\\axto-t1-halbleiter\\kollimator5.TKA")
+coll6 = load_spectrum("axto-t1\\axto-t1\\axto-t1-halbleiter\\kollimator6.TKA")
+coll7 = load_spectrum("axto-t1\\axto-t1\\axto-t1-halbleiter\\kollimator7.TKA")
+#coll8 = load_spectrum("axto-t1\\axto-t1\\axto-t1-halbleiter\\kollimator8.TKA")
+
+coll = [coll0, coll1, coll2, coll3, coll4, coll5, coll6, coll7]
+coll_dists = [36.595,37.095,37.595,38.095,38.595,39.095,39.595,40.095]
+
+chann_coll = np.arange(0, coll0.shape[0], 1)
+fig, ax = plt.subplots(8, 1, figsize = (12, 17), layout = "tight")
+
+for i in range(8):
+    
+    ax[i].errorbar(chann_coll, coll[i], np.sqrt(coll[i]), label = "measured spectra with collimator", fmt = ".")
+    ax[i].title.set_text("Am-241 with collimator, x = " + str(coll_dists[i]) + " cm")
+    ax[i].set_ylabel("counts")
+    ax[i].set_xlabel("channels")
+    ax[i].legend()
+    
+plt.savefig("collimator.pdf")    
+plt.show()
+
+#%% ionisationskammer
+ion_1 = np.genfromtxt("T01\\T01\\Ionisationskammer_1.csv", delimiter = ",")
+ion_1[:,0] = ion_1[0,0] - ion_1[:,0]
+ion_1[:,0] /= 10
+ion_2 = np.genfromtxt("T01\\T01\\Ionisationskammer_2.csv", delimiter = ",")
+ion_2[:,0] = ion_2[0,0] - ion_2[:,0]
+ion_2[:,0] /= 10
+
+#fit 
+
+plt.errorbar(ion_1[:,0], ion_1[:,1], ion_1[:,2], label = "Messreihe 1", fmt = "o")
+plt.errorbar(ion_2[:,0], ion_2[:,1], ion_2[:,2], label = "Messreihe 2", fmt = "o")
+plt.axhline(0, color = "silver", ls = "--")
+
+plt.ylabel("$I$ [$nA$]")
+plt.xlabel("$d-d_0$ [$mm$]")
+plt.title("Ionisationskammer")
+plt.legend()
+plt.show()
+# keine teilchem erreichen ionisationskammer bei r  = 5.4cm
+reichweite_max_ion = 5.4 #unsicherheit 0.3/sqrt(12)
+reichweite_max_ion_err = 0.3/12**0.5
+
+absorption_ion = reichw_lit_umgerechnet[-1] - reichweite_max_ion
+print(f"additional absorption thickness = ({absorption_ion:.2f} +- {reichweite_max_ion_err:.2f}) cm air equiv.")
+print("kleiner als hl-det --> gut")
+
+def ion_fit(x, a1, b1, c1, a2, b2, c2,):
+    return a1*scipy.special.erfc(b1*(x-c1)) + a2*scipy.special.erfc(b2*(x-c2)) 
+
+c_ion = cost.LeastSquares(ion_1[:,0], ion_1[:,1], ion_1[:,2], ion_fit)
+
+c_in = (0.15, 1, 45, 1, 1, 15)
+m_ion = iminuit.Minuit(c_ion, *c_in)
+
+print(m_ion.migrad())
+
+fig, ax = fig, ax = plt.subplots(2, 1, figsize=(10,7), layout = "tight",sharex=True, gridspec_kw={'height_ratios': [5, 2]})
+
+x_plot = np.linspace(0, 55)
+fity = ion_fit(ion_1[:,0], m_ion.values["a1"], m_ion.values["b1"], m_ion.values["c1"], m_ion.values["a2"], m_ion.values["b2"], m_ion.values["c2"],)
+fity_plot = ion_fit(x_plot, m_ion.values["a1"], m_ion.values["b1"], m_ion.values["c1"], m_ion.values["a2"], m_ion.values["b2"], m_ion.values["c2"],)
+
+ax[0].errorbar(ion_1[:,0], ion_1[:,1], ion_1[:,2], label = "measurement", fmt = "o")
+ax[0].plot(x_plot, fity_plot, label = "fit")
+ax[0].vlines( m_ion.values["c1"], 0, m_ion.values["a1"], label = "$R_1$", color = "darkblue")
+ax[0].vlines( m_ion.values["c2"], 0, m_ion.values["a2"] + 2*m_ion.values["a1"], label = "$R_2$", color = "slateblue")
+ax[0].axhline(0, color = "silver", ls = "--")
+
+
+ax[0].set_ylabel("$I$ [$nA$]")
+ax[0].legend()
+ax[0].title.set_text("Ionisation chamber, fit")
+
+ax[1].axhline(0, color = "black", ls = "--")
+ax[1].errorbar(ion_1[:,0], ion_1[:,1]- fity, ion_1[:,2], label = "residuals", fmt = "o")
+ax[1].set_ylabel('$I- I_fit$ [$nA$] ')
+ax[1].set_xlabel('$d-d_0$ [$mm$]')
+ymax = max([abs(x) for x in ax[1].get_ylim()])
+ax[1].set_ylim(-ymax, ymax)
+ax[1].legend(fontsize = 13)
+fig.text(0.5,0, f'$R_1$ = ({m_ion.values["c1"]:.2f} +- {m_ion.errors["c1"]:.2f}) cm , $R_2$ = ({m_ion.values["c2"]:.2f} +- {m_ion.errors["c2"]:.2f}) cm , chi2/dof = {m_ion.fval:.1f} / {m_ion.ndof} = {m_ion.fval/m_ion.ndof:.1f} ', horizontalalignment = "center")
+fig.subplots_adjust(hspace=0.0)
+plt.savefig("ionisation_chamber_fit.pdf")
+plt.show()
+
+print("mean reach po214, ion")
+print(f" {m_ion.values['c1']:.2f} +- {m_ion.errors['c1']:.2f} mm")
+print("plus absorpt")
+r_ion_tot = absorption_ion * 10 + m_ion.values['c1']
+r_ion_tot_err = np.sqrt((reichweite_max_ion_err*10)**2 +  m_ion.errors['c1']**2)
+print(f" {r_ion_tot:.2f} +- {r_ion_tot_err:.2f} mm")
+
+print("mean reach po214, semiconductor")
+print(f" {m_erf.values['c1']:.2f} +- {m_erf.errors['c1']:.2f} cm")
+print("plus absorpt")
+r_hl_tot = intrins_absorpt + m_erf.values['c1']
+r_hl_tot_err = np.sqrt(intrins_absorpt_err**2 +  m_erf.errors['c1']**2)
+print(f" {r_hl_tot:.2f} +- {r_hl_tot_err:.2f} mm")
+
