@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import iminuit
 from iminuit import cost
+import scipy
 from praktikum.analyse import lineare_regression_xy
 plt.rcParams["figure.figsize"] = (13,8)
 
@@ -290,7 +291,7 @@ def lin(x, a, b):
     return a*x+b
 
 #a, ae, b, be, fval, cov  = lineare_regression_xy(np.array([m_ra226.values['mu'], m_po218.values['mu'], m_po214.values['mu']]), np.array([e_ra226, e_po218, e_po214]), np.array([m_ra226.errors['mu'], m_po218.errors['mu'], m_po214.errors['mu']]),  np.array([e_ra226_err, e_po218_err, e_po214_err]))
-a, ae, b, be, fval, cov  = lineare_regression_xy(np.array([m_ra226.values['mu'], m_po218.values['mu'], m_po214.values['mu']]), ASTAR_energies[True,False,False,True,True], np.array([m_ra226.errors['mu'], m_po218.errors['mu'], m_po214.errors['mu']]), ASTAR_energies_err[True,False,False,True,True])
+a, ae, b, be, fval, cov  = lineare_regression_xy(np.array([m_ra226.values['mu'], m_po218.values['mu'], m_po214.values['mu']]), ASTAR_energies[[True,False,False,True,True]], np.array([m_ra226.errors['mu'], m_po218.errors['mu'], m_po214.errors['mu']]), ASTAR_energies_err[[True,False,False,True,True]])
 
 print(a, ae, b, be, fval, cov)
 
@@ -345,7 +346,7 @@ for i in range(4):
 
     print(m_peaks.migrad())
     fit_counts_peaks = gauss(channels[lower[i]:upper[i]], m_peaks.values["mu"], m_peaks.values["sigma"], m_peaks.values["a"], m_peaks.values["c"])
-    ax[0,i+1].errorbar(channels[lower[i]:upper[i]], plist[i][lower[i]:upper[i]], np.sqrt(plist[i][lower[i]:upper[i]]), fmt = ".", label = "recorded Po-214-peak", zorder = 1)
+    ax[0,i+1].errorbar(channels[lower[i]:upper[i]], plist[i][lower[i]:upper[i]], np.sqrt(plist[i][lower[i]:upper[i]]), fmt = ".", label = "recorded Po-214-peak", zorder = 1, alpha = 1)
     ax[0,i+1].plot(channels[lower[i]:upper[i]], fit_counts_peaks, label = "fit")
     ax[0,i+1].set_xlabel("channel")
     ax[0,i+1].set_ylabel("counts")
@@ -404,7 +405,7 @@ print(stopping_power_air)
 print(sto_pow_air_err)
 
 ASTAR_stopping_power_air = [7.251E+02, 7.496E+02, 8.163E+02, 8.501E+02, 9.860E+02]
-
+#TODO stoppig power von air
 
 #energy calib
 a2, a2e, b2, b2e, fval2, cov2  = lineare_regression_xy(peak_channel, ASTAR_part_energies, peak_channel_err,  np.array([0.001,0.001,0.001,0.001,0.001,]))
@@ -421,13 +422,128 @@ plt.show()
 
 #%%1.5 range 
 #messung bei min_dist 240s, bei anderen 25s --> skalierung
-integral_under_peak = [np.sum(alpha[int(peak_channel[0]-sigmas_peak_channels[0]):int(peak_channel[0]+sigmas_peak_channels[0])]) * 25/240]
+integral_under_peak = [np.sum(alpha[int(peak_channel[0]-2*sigmas_peak_channels[0]):int(peak_channel[0]+2*sigmas_peak_channels[0])]) * 25/240]
 for i in range(4):
-    integral_under_peak.append(np.sum(plist[i][int(peak_channel[i+1]-sigmas_peak_channels[i+1]):int(peak_channel[i+1]+sigmas_peak_channels[i+1])]))
+    integral_under_peak.append(np.sum(plist[i][int(peak_channel[i+1]-2*sigmas_peak_channels[i+1]):int(peak_channel[i+1]+2*sigmas_peak_channels[i+1])]))
+integral_under_peak.append(np.sum(plist[4][2000:]))
+
 print(integral_under_peak)
 
 #TODO errors 
-
-plt.scatter(total_absorpt_layer_thickness, integral_under_peak)
+tot_abs_lay_thi = np.array([*total_absorpt_layer_thickness, 7.04821927])
+plt.scatter(tot_abs_lay_thi, integral_under_peak)
 plt.show()
 #TODO letzten wert noch einfügen
+
+#%% besser 
+def find_peak(channels, spectrum, start_val, vis = False):
+    f = spectrum > 0
+    c_fkt=cost.LeastSquares(channels[f], spectrum[f], np.sqrt(spectrum[f]), gauss)
+    m_fkt = iminuit.Minuit(c_fkt, mu = start_val, sigma=100, a = 1, c= 0)
+    m_fkt.migrad()
+    print(f"chi2/ndof = {m_fkt.fval / m_fkt.ndof:.2f}")
+    print(f" min is valid : {m_fkt.valid}")
+    if vis == True:
+        m_fkt.visualize()
+        plt.show()
+    return m_fkt.values["mu"], m_fkt.errors["mu"], m_fkt.values["sigma"], m_fkt.errors["sigma"]
+    
+integral_under_peak = [np.sum(alpha[int(peak_channel[0]-3*sigmas_peak_channels[0]):int(peak_channel[0]+3*sigmas_peak_channels[0])]) * 25/240]
+
+
+for i in range(4):
+    l = int(peak_channel[i+1]-4*sigmas_peak_channels[i+1])
+    u = int(peak_channel[i+1]+4*sigmas_peak_channels[i+1])
+    peak_min, peak_min_err, sigm, sigm_err = find_peak(channels[l:u], pminuslist[i][l:u], peak_channel[i+1])
+    integral_under_peak.append(np.sum(pminuslist[i][int(peak_min-4*sigm):int(peak_min+4*sigm)]))
+    
+    
+    integral_under_peak.append(np.sum(plist[i][int(peak_channel[i+1]-4*sigmas_peak_channels[i+1]):int(peak_channel[i+1]+4*sigmas_peak_channels[i+1])]))
+    
+    peak_plus, peak_plus_err, sigm, sigm_err = find_peak(channels[l:u], ppluslist[i][l:u], peak_channel[i+1])
+    integral_under_peak.append(np.sum(ppluslist[i][int(peak_plus-4*sigm):int(peak_plus+4*sigm)]))
+
+#integral_under_peak.append(np.sum(pminuslist[4][3000:]))
+#integral_under_peak.append(np.sum(plist[4][3000:]))
+#integral_under_peak.append(np.sum(ppluslist[4][3000:]))
+
+integral_under_peak = np.array(integral_under_peak) 
+integral_under_peak_err = np.sqrt(integral_under_peak)
+#da err  = sqrt( sum sqrt(val) **2) ==> err = sqrt(sum(val))
+
+#print(integral_under_peak)
+
+#TODO errors 
+tot_abs_lay_thi = [total_absorpt_layer_thickness[0]]
+for i in range(4):
+    tot_abs_lay_thi.append(total_absorpt_layer_thickness[i+1]-0.1)
+    tot_abs_lay_thi.append(total_absorpt_layer_thickness[i+1])
+    tot_abs_lay_thi.append(total_absorpt_layer_thickness[i+1]+0.1)
+
+#tot_abs_lay_thi.append(7.04821927 - 0.1)
+#tot_abs_lay_thi.append(7.04821927 )
+#tot_abs_lay_thi.append(7.04821927 + 0.1)
+
+tot_abs_lay_thi = np.array(tot_abs_lay_thi)
+
+def integr_reach_model(x, a1, b1, c1,): #1 -integrated gaussian , 1-erf()
+    return a1*scipy.special.erfc(b1*(x-c1)) 
+
+c_erf = cost.LeastSquares(tot_abs_lay_thi, integral_under_peak, integral_under_peak_err, integr_reach_model)
+m_erf = iminuit.Minuit(c_erf, a1 = 20000, b1 = 15, c1 = 4) 
+print(m_erf.migrad())
+#m_erf.visualize()
+x_abs_lay_thick = np.linspace(0, 8)
+x_abs_lay_linfit = np.linspace(2.5, 6)
+
+#steigung von erf:
+steigung_erf = - m_erf.values["a1"] * m_erf.values["b1"] * 2/np.sqrt(np.pi) * np.exp(-(0)**2)
+steigung_erf_err = np.sqrt( ( m_erf.values["b1"] * 2/np.sqrt(np.pi) * m_erf.errors["a1"])**2 + ( m_erf.values["a1"] * 2/np.sqrt(np.pi) * m_erf.errors["b1"])**2 )
+
+lin_approx = lin(x_abs_lay_linfit, steigung_erf, -steigung_erf * m_erf.values["c1"] + m_erf.values["a1"])
+
+R_max_hl = -(-steigung_erf * m_erf.values["c1"] + m_erf.values["a1"])/steigung_erf
+R_max_hl_err = np.sqrt( (m_erf.values["a1"]/steigung_erf**2 * steigung_erf_err)**2 + (m_erf.errors["c1"])**2 + (1/steigung_erf * m_erf.errors["a1"])**2)
+
+print(R_max_hl)
+print(R_max_hl_err)
+
+
+fig, ax = fig, ax = plt.subplots(2, 1, figsize=(10,7), layout = "tight",sharex=True, gridspec_kw={'height_ratios': [5, 2]})
+ax[0].plot(x_abs_lay_thick, integr_reach_model(x_abs_lay_thick, m_erf.values["a1"], m_erf.values["b1"], m_erf.values["c1"]))
+ax[0].plot(x_abs_lay_linfit, lin_approx, label = "tangent for $R_{max}$", color = "black", ls = "--")
+ax[0].axhline(0, color = "silver", ls = "--")
+ax[0].scatter(R_max_hl, 0, color = "navy", label = "$R_{max}$ = " + f"({R_max_hl:.2f} +- {R_max_hl_err:.2f}) cm of air equivalent")
+
+ax[0].errorbar(tot_abs_lay_thi, integral_under_peak, integral_under_peak_err, fmt= ".", label = "numerically integrated area under Po-214-peaks")
+ax[0].set_title("numerically integrated area under Po-214-peaks, from $(peak- 3\sigma_{fit})$ to $(peak + 3\sigma_{fit})$")
+#ax[0].set_xlabel("total absorption thickness [cm of air equivalent]")
+ax[0].set_ylabel("total counts under Po-214-Peak")
+ax[0].vlines(m_erf.values["c1"],0, m_erf.values["a1"], color = "grey", label = f"<R> = ({m_erf.values['c1']:.2f} +- {m_erf.errors['c1']:.2f}) cm of air equivalent" )
+ax[0].legend()
+
+
+fity = integr_reach_model(tot_abs_lay_thi, m_erf.values["a1"], m_erf.values["b1"], m_erf.values["c1"])
+
+ax[1].errorbar(tot_abs_lay_thi, integral_under_peak - fity, integral_under_peak_err, fmt= ".", label = "residuals")
+ax[1].axhline(y=0., color='black', linestyle='--', zorder = 4)
+ax[1].set_ylabel('$total counts - total counts_fit$ ')
+ax[1].set_xlabel('total absorption thickness [cm of air equivalent]')
+ymax = max([abs(x) for x in ax[1].get_ylim()])
+ax[1].set_ylim(-ymax, ymax)
+ax[1].legend(fontsize = 13)
+fig.text(0.5,0, f'a = ({m_erf.values["a1"]:.2f} +- {m_erf.errors["a1"]:.2f}) , b = ({m_erf.values["b1"]:.2f} +- {m_erf.errors["b1"]:.2f}), $<R>$ = ({m_erf.values["c1"]:.2f} +- {m_erf.errors["c1"]:.2f}),  chi2/dof = {m_erf.fval:.1f} / {m_erf.ndof} = {m_erf.fval/m_erf.ndof:.1f} ', horizontalalignment = "center")
+fig.subplots_adjust(hspace=0.0)
+
+plt.savefig("integrated_reach_alpha.pdf")
+plt.show()
+#TODO problem keine rauschmessung 
+#TODO schlechte qualitiät mit allem liegt potentielle an schlechter ausrichtung des strahlers?
+
+
+
+#TODO COLLIMATOR
+
+#%%collimator
+
+coll0 = load_spectrum("axto-t1\\axto-t1\\axto-t1-halbleiter\\4 peaks.TKA")

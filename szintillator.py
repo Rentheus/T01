@@ -34,10 +34,10 @@ sz2rauscherr = np.sqrt(sz2rausch)
 #rauschmessung comp für hintergrundstrahlung
 
 sz1 = sz1 - sz1rausch*3
-sz1err = np.sqrt(sz1err**2 + (3*sz1rauscherr))
+sz1err = np.sqrt(sz1err**2 + (3*sz1rauscherr)**2)
 
 sz2 = sz2 - sz2rausch*3
-sz2err = np.sqrt(sz2err**2 + (3*sz2rauscherr))
+sz2err = np.sqrt(sz2err**2 + (3*sz2rauscherr)**2)
 
 
 fig, ax = fig, ax = plt.subplots(2, 1, figsize=(16,8), layout = "tight")
