@@ -61,8 +61,8 @@ for i in range(beta.shape[0]//5):
     beta_comb[i,2] = np.std(beta[i*5:(i+1)*5,1], ddof= 1)
     
 
-def beta_absorb(x, a1,b1 ,c ):
-    return abs(a1)*np.exp(-x/b1)+c
+def beta_absorb(x, I_0,mu ,c ):
+    return abs(I_0)*np.exp(-x*mu)+c
 
 print(beta_comb)
 chi2 = cost.LeastSquares(beta_comb[:,0], beta_comb[:,1], beta_comb[:,2], beta_absorb)
@@ -84,9 +84,9 @@ fig, ax = fig, ax = plt.subplots(2, 1, figsize=(10,9), layout = "tight",gridspec
 ax[0].errorbar(beta_comb[:,0], beta_comb[:,1], beta_comb[:,2], fmt = ".", label = "average counts per 10s")
 #plt.scatter(beta[:,0], beta[:,1])
 
-fity = beta_absorb( beta_comb[:,0], m_beta.values["a1"],m_beta.values["b1"],m_beta.values["c"])
+fity = beta_absorb( beta_comb[:,0], m_beta.values["I_0"],m_beta.values["mu"],m_beta.values["c"])
 x = np.linspace(0,950)
-fity2 = beta_absorb( x, m_beta.values["a1"],m_beta.values["b1"], m_beta.values["c"])
+fity2 = beta_absorb( x, m_beta.values["I_0"],m_beta.values["mu"], m_beta.values["c"])
 ax[0].plot(x,fity2, label = "fit")
 
 ax[0].set_ylabel("counts")
@@ -102,10 +102,11 @@ ax[1].set_ylim(-ymax, ymax)
 ax[1].legend(fontsize = 13)
 
 
-fig.text(0.5,0, f'I_0  = ({m_beta.values["a1"]:.2f} +- {m_beta.errors["a1"]:0.2f}) , b = ({m_beta.values["b1"]:.3f} +- {m_beta.errors["b1"]:.3f}) 1/mm,  chi2/dof  = {m_beta.fval:.1f} ', horizontalalignment = "center")
+fig.text(0.5,0, f'I_0  = ({m_beta.values["I_0"]:.2f} +- {m_beta.errors["I_0"]:0.2f}) , b = ({m_beta.values["mu"]:.3f} +- {m_beta.errors["mu"]:.3f}) 1/mm,  chi2/dof  = {m_beta.fval:.1f} ', horizontalalignment = "center")
 fig.subplots_adjust(hspace=0.0)
 
-ax[0].title.set_text("$beta absorber, Sr-90")
+ax[0].title.set_text("absorption of β-radiation, Sr-90")
+plt.savefig("beta_absorpt.pdf")
 plt.show()
 
 #TODO probelm one abstimmung ein ereigniss alle 4.3 \mu s ==>totzeit? haben wir szintillator oder gm verwendet
