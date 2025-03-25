@@ -14,10 +14,10 @@ from iminuit import cost
 plt.rcParams["figure.figsize"] = (10,7)
 
 #%% ionisationskammer
-ion_1 = np.genfromtxt("Ionisationskammer_1.csv", delimiter = ",")
+ion_1 = np.genfromtxt("T01\\T01\\Ionisationskammer_1.csv", delimiter = ",")
 ion_1[:,0] = ion_1[0,0] - ion_1[:,0]
 ion_1[:,0] /= 10
-ion_2 = np.genfromtxt("Ionisationskammer_2.csv", delimiter = ",")
+ion_2 = np.genfromtxt("T01\\T01\\Ionisationskammer_2.csv", delimiter = ",")
 ion_2[:,0] = ion_2[0,0] - ion_2[:,0]
 ion_2[:,0] /= 10
 plt.errorbar(ion_1[:,0], ion_1[:,1], ion_1[:,2], label = "Messreihe 1", fmt = "o")
@@ -32,25 +32,25 @@ plt.show()
 
 #%% beta-absorber
 
-beta_noise = np.genfromtxt("beta_noise.csv", delimiter = ",")
-beta = np.genfromtxt("beta_abschirmung.csv", delimiter = ",", dtype=(float, int))
+beta_noise = np.genfromtxt("T01\\T01\\beta_noise.csv", delimiter = ",")
+beta = np.genfromtxt("T01\\T01\\beta_abschirmung.csv", delimiter = ",", dtype=(float, int))
 
 beta[:,1] - np.mean(beta_noise)
 abschirmungen = {
     0:0,
-    5:0.03,
-    13:0.50,
-    23:3.46,
-    12:0.37,
-    9:0.10,
-    22:2.79,
-    6:0.04,
-    17:1.23,
-    18:1.39,
-    11:0.25,
-    15:0.83,
-    20:1.88,
-    }
+    5:6.84,
+    13:135,
+    23:933,
+    12:100,
+    9:28.2,
+    22:754,
+    6:10.7,
+    17:332,
+    18:375,
+    11:66.8,
+    15:224,
+    20:507,
+    } # area_mass density mg/cm^2
 for i in range(beta.shape[0]):
     beta[i,0] = abschirmungen[int(beta[i,0])]
     
@@ -85,7 +85,7 @@ ax[0].errorbar(beta_comb[:,0], beta_comb[:,1], beta_comb[:,2], fmt = ".", label 
 #plt.scatter(beta[:,0], beta[:,1])
 
 fity = beta_absorb( beta_comb[:,0], m_beta.values["a1"],m_beta.values["b1"],m_beta.values["c"])
-x = np.linspace(0,3.5)
+x = np.linspace(0,950)
 fity2 = beta_absorb( x, m_beta.values["a1"],m_beta.values["b1"], m_beta.values["c"])
 ax[0].plot(x,fity2, label = "fit")
 
