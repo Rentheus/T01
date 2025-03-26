@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import iminuit
 from iminuit import cost
+from uncertainties import ufloat
 
 plt.rcParams["figure.figsize"] = (10,7)
 
@@ -86,28 +87,41 @@ ax[0].errorbar(beta_comb[:,0], beta_comb[:,1], beta_comb[:,2], fmt = ".", label 
 #plt.scatter(beta[:,0], beta[:,1])
 
 fity = beta_absorb( beta_comb[:,0], m_beta.values["I_0"],m_beta.values["mu"],m_beta.values["c"])
-x = np.linspace(0,950)
+x = np.linspace(0,1270)
 fity2 = beta_absorb( x, m_beta.values["I_0"],m_beta.values["mu"], m_beta.values["c"])
 ax[0].plot(x,fity2, label = "fit")
 
 ax[0].set_ylabel("counts")
 #ax[0].set_yscale("log")
-ax[0].legend(fontsize = 13)
+#ax[0].legend(fontsize = 13)
 
 ax[1].axhline(y=0., color='black', linestyle='--', zorder = 4)
 ax[1].errorbar(beta_comb[:,0], beta_comb[:,1]-fity, beta_comb[:,2], fmt = ".", label = "residuals")
 ax[1].set_ylabel('$counts - counts_{fit}$ ')
-ax[1].set_xlabel('$d_{Alu}$ [$mm$] ')
+ax[1].set_xlabel('$d_{Alu}$ [$mg/cm^2$] ')
 ymax = max([abs(x) for x in ax[1].get_ylim()])
 ax[1].set_ylim(-ymax, ymax)
 ax[1].legend(fontsize = 13)
 
+mu_strich = ufloat(m_beta.values["mu"]*1000,m_beta.errors["mu"]*1000)
+E_max = (17/mu_strich)**(1/1.14)
+print(E_max)
+r_max_strich = 0.412*E_max**(1.265-0.0954*E_max) 
 
-fig.text(0.5,0, f'I_0  = ({m_beta.values["I_0"]:.2f} +- {m_beta.errors["I_0"]:0.2f}) , b = ({m_beta.values["mu"]:.3f} +- {m_beta.errors["mu"]:.3f}) 1/mm,  chi2/dof  = {m_beta.fval:.1f} ', horizontalalignment = "center")
+print(r_max_strich)
+
+al_density = 2.699 #g/cm^3 https://en.wikipedia.org/wiki/Aluminium
+
+print(r_max_strich/al_density)
+
+ax[0].axvline(r_max_strich.nominal_value*1000, label="maximum range of radiation", color = "grey", ls = "--")
+
+fig.text(0.5,0, f'$I_0$ = ({m_beta.values["I_0"]:.2f} +- {m_beta.errors["I_0"]:0.2f}) , $\mu\'$ = ({m_beta.values["mu"]*1000:.3f} +- {m_beta.errors["mu"]*1000:.3f}) $cm^2/g$, B = ({m_beta.values["c"]:.1f} +- {m_beta.errors["c"]:.1f}),  chi2/dof  = {m_beta.fval:.1f}/{m_beta.ndof} = {m_beta.fval/m_beta.ndof:.1f} ', horizontalalignment = "center")
 fig.subplots_adjust(hspace=0.0)
+ax[0].legend(fontsize = 13)
 
 ax[0].title.set_text("absorption of β-radiation, Sr-90")
 plt.savefig("beta_absorpt.pdf")
 plt.show()
 
-#TODO probelm one abstimmung ein ereigniss alle 4.3 \mu s ==>totzeit? haben wir szintillator oder gm verwendet
+

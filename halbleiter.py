@@ -117,7 +117,7 @@ plt.show()
 intrins_absorpt = np.mean(reichw_lit_umgerechnet - reichweiten)
 intrins_absorpt_err = np.std(reichw_lit_umgerechnet - reichweiten, ddof = 1)/np.sqrt(5)
 
-print(f"intr absortpion thickness: {intrins_absorpt:.5f}+-{intrins_absorpt_err:.5f} cm of air equiv")
+print(f"intr absortpion thickness: {intrins_absorpt:.2f}+-{intrins_absorpt_err:.2f} cm of air equiv")
 
 #%% energie deposit in 300 mikrometer si https://physics.nist.gov/cgi-bin/Star/ap_table.pl GRAPH ZITIEREN
 
@@ -155,23 +155,6 @@ e_ra226 = 4.78 - e_loss_4780keV
 e_ra226_err = e_loss_err_4780keV
 print(f"measured energy for Ra-226: ({e_ra226:.3f} +- {e_ra226_err:.3f}) MeV)")
 
-#TODO stopping power eigentlich nicht linear
-#alphateilchen verlieren nichtlinear energie => besser über range? aber auch nichtlinear
-# langee tabelle über astar: reach -> energy
-
-
-
-#def lincalib(channels, p1, e1, p2, e2, p1err, e1err, p2err, e2err):
-#    m = (e2-e1)/(p2-p1)
-#    merr = np.sqrt( ((1)/(p2-p1) * (np.sqrt(e1err**2 + e2err*2)))**2 + ( (e2-e1)/(p2-p1)**2 * (np.sqrt(p1err**2 + p2err*2)) )**2 )
-#    print(merr)
-#    b = -m * p1 + e1
-#    berr = np.sqrt( (m*p1err)**2 + (p1*merr)**2 + e1err**2 )
-#    ener_calib = m*channels + b
-#    ener_caliberr = np.sqrt((merr*channels)**2 + berr**2)
-#    return ener_calib, ener_caliberr
-
-#oder mit linfit, linfit wahrsch. besser
 
 #peaks bestimmen:
 
@@ -284,7 +267,8 @@ print(ASTAR_reach)
 print("ASTAR reichweiten bei +0.5 mm : ")
 print(ASTAR_reach_plus)
 
-print(ASTAR_energies_err)
+
+
 
 
 def lin(x, a, b):
@@ -379,7 +363,7 @@ reichweiten_remaining_temp = reichweiten[-1]-reichweiten
 rw_rem = np.array([reichweiten[-1], reichweiten_remaining_temp[0], reichweiten_remaining_temp[1], reichweiten_remaining_temp[2], reichweiten_remaining_temp[3]])
 
 total_absorpt_layer_thickness = intrins_absorpt + reichweiten[-1] - rw_rem
-tot_abs_lay_thi_err = np.sqrt(intrins_absorpt_err**2 + 2* (0.01/12**0.5)**2)
+tot_abs_lay_thi_err = np.sqrt(intrins_absorpt_err**2 + 2* (0.01/12**0.57)**2)
 print(tot_abs_lay_thi_err)
 plt.errorbar(total_absorpt_layer_thickness, peak_channel, peak_channel_err, fmt = "o")
 plt.ylabel("peak position [channel]")
@@ -399,23 +383,49 @@ plt.show()
 
 #stopping power air  = (E0- Enow)/(rw_rem*air_density)
 ASTAR_part_energies = np.array([5.360, 5.111, 4.518, 4.257, 3.411])
-stopping_power_air = (7.69 - ASTAR_part_energies)/((total_absorpt_layer_thickness)*air_density)
-sto_pow_air_err =(7.69 - ASTAR_part_energies)/(total_absorpt_layer_thickness**2*air_density) * tot_abs_lay_thi_err
-print(stopping_power_air)
-print(sto_pow_air_err)
+ASTAR_part_energies_plus = np.array([5.408, 5.162, 4.574, 4.316, 3.479])
+ASTAR_part_energies_err = ASTAR_part_energies_plus - ASTAR_part_energies
+
+all_energies = np.array([7.69, *ASTAR_part_energies])
+all_energies_err = np.array([0, *ASTAR_part_energies_err])
+energy_diffs = all_energies[:-1] - all_energies[1:] 
+energy_diffs_err = np.sqrt(all_energies[:-1]**2 + all_energies[1:]**2) 
+
+diffs_tot_abs_lay_thi = total_absorpt_layer_thickness[1:] - total_absorpt_layer_thickness[0:-1]
+diffs_tot_abs_lay_thi = np.array([intrins_absorpt, *diffs_tot_abs_lay_thi])
+
+
+
+stopping_power_air = (energy_diffs)/((diffs_tot_abs_lay_thi)*air_density)
+sto_pow_air_err =np.sqrt(((energy_diffs)/(total_absorpt_layer_thickness**2*air_density) * np.sqrt(2) *tot_abs_lay_thi_err)**2 + (1/((total_absorpt_layer_thickness)*air_density) * energy_diffs_err )) 
+#print(stopping_power_air)
+#print(sto_pow_air_err)
+
+#plt.errorbar()
 
 ASTAR_stopping_power_air = [7.251E+02, 7.496E+02, 8.163E+02, 8.501E+02, 9.860E+02]
 #TODO stoppig power von air
 
+for i in range(5):
+    print(f"{stopping_power_air[i]:.2f} +- {sto_pow_air_err[i]:.2f}")
+
 #energy calib
-a2, a2e, b2, b2e, fval2, cov2  = lineare_regression_xy(peak_channel, ASTAR_part_energies, peak_channel_err,  np.array([0.001,0.001,0.001,0.001,0.001,]))
+a2, a2e, b2, b2e, fval2, cov2  = lineare_regression_xy(peak_channel, ASTAR_part_energies, peak_channel_err,  ASTAR_part_energies_err)
 
 print(a,ae,b,be)
 print(a2,a2e,b2,b2e,fval2,cov2)
 
-plt.scatter(peak_channel, ASTAR_part_energies)
-plt.plot(peak_channel, a2*peak_channel + b2)
-plt.plot(peak_channel, a*peak_channel + b)
+
+x_p_channel= np.linspace(2000, 13000)
+plt.errorbar(np.array([m_ra226.values['mu'], m_po218.values['mu'], m_po214.values['mu']]), ASTAR_energies[[True,False,False,True,True]],  ASTAR_energies_err[[True,False,False,True,True]], np.array([m_ra226.errors['mu'], m_po218.errors['mu'], m_po214.errors['mu']]), fmt= "o", label = "calibration via different peaks", color = "red", ms = 7)
+plt.errorbar(peak_channel, ASTAR_part_energies, np.array([0.001,0.001,0.001,0.001,0.001,]), peak_channel_err, label = "Calibration via distance variation", color = "blue", fmt = "X")
+plt.plot(x_p_channel, a2*x_p_channel + b2, color = "dodgerblue", label = "fit, distance variation")
+plt.plot(x_p_channel, a*x_p_channel + b, color = "indianred", label = "fit, different peaks")
+plt.legend()
+plt.xlabel("channel")
+plt.ylabel("$E_α$ [$MeV$]")
+plt.title("comparison energy fits")
+plt.savefig("comp_energy_fits.pdf")
 plt.show()
 
 #TODO die calibs matchen nicht
@@ -635,7 +645,7 @@ ax[1].set_xlabel('$d-d_0$ [$mm$]')
 ymax = max([abs(x) for x in ax[1].get_ylim()])
 ax[1].set_ylim(-ymax, ymax)
 ax[1].legend(fontsize = 13)
-fig.text(0.5,0, f'$R_1$ = ({m_ion.values["c1"]:.2f} +- {m_ion.errors["c1"]:.2f}) cm , $R_2$ = ({m_ion.values["c2"]:.2f} +- {m_ion.errors["c2"]:.2f}) cm , chi2/dof = {m_ion.fval:.1f} / {m_ion.ndof} = {m_ion.fval/m_ion.ndof:.1f} ', horizontalalignment = "center")
+fig.text(0.5,0, f'$R_1$ = ({m_ion.values["c1"]:.2f} +- {m_ion.errors["c1"]:.2f}) mm , $R_2$ = ({m_ion.values["c2"]:.2f} +- {m_ion.errors["c2"]:.2f}) mm , chi2/dof = {m_ion.fval:.1f} / {m_ion.ndof} = {m_ion.fval/m_ion.ndof:.1f} ', horizontalalignment = "center")
 fig.subplots_adjust(hspace=0.0)
 plt.savefig("ionisation_chamber_fit.pdf")
 plt.show()

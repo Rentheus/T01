@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import iminuit
 from iminuit import cost
-
+from uncertainties import ufloat 
 plt.rcParams["figure.figsize"] = (13,8)
 
 #%% szintillator vergleich
@@ -72,24 +72,25 @@ plt.show()
 # höhe von photopeak mit fit von gaußkurve
 #sz1
 def gauss(x, mu, sigma, a, c):
-    return  a*1/(sigma * np.sqrt(2*np.pi)) * np.exp(-1/2 * ((x-mu)/sigma)**2) + c
+    return  a*1/(sigma * np.sqrt(2*np.pi)) * np.exp(-1/2 * ((x-mu)/sigma)**2) +c
 
-c_sz1 = cost.LeastSquares(channels[6000:9200], sz1[6000:9200], sz1err[6000:9200], gauss)
+c_sz1 = cost.LeastSquares(channels[6000:11000], sz1[6000:11000], sz1err[6000:11000], gauss)
 
-m_sz1 = iminuit.Minuit(c_sz1, mu = 7000, sigma=10, a = 1, c= 160)
+m_sz1 = iminuit.Minuit(c_sz1, mu = 7000, sigma=10, a = 1, c= 0)
 
-print(m_sz1.migrad(ncall = 20000))
+print(m_sz1.migrad(ncall = 50000))
+#print(m_sz1.hesse())
 fig, ax = plt.subplots(2, 1, figsize=(10,8), layout = "tight",gridspec_kw={'height_ratios': [5, 2]}, sharex = True)
-fit_counts = gauss(channels[6000:9200], m_sz1.values["mu"], m_sz1.values["sigma"], m_sz1.values["a"], m_sz1.values["c"])
+fit_counts = gauss(channels[6000:11000], m_sz1.values["mu"], m_sz1.values["sigma"], m_sz1.values["a"], m_sz1.values["c"])
 
-ax[0].errorbar(channels[6000:9200], sz1[6000:9200], sz1err[6000:9200], label = "measurements", fmt = ".", zorder= 1)
-ax[0].plot(channels[6000:9200], fit_counts, label = "fit", zorder = 2)
+ax[0].errorbar(channels[6000:11000], sz1[6000:11000], sz1err[6000:11000], label = "measurements", fmt = ".", zorder= 1)
+ax[0].plot(channels[6000:11000], fit_counts, label = "fit", zorder = 2)
 ax[0].axvline(m_sz1.values["mu"], label = "peak", zorder = 3, color = "black")
 ax[0].set_ylabel("counts")
 ax[0].legend()
 
 
-ax[1].errorbar(channels[6000:9200], sz1[6000:9200] - fit_counts, sz1err[6000:9200] , label = "residuals", zorder = 1)
+ax[1].errorbar(channels[6000:11000], sz1[6000:11000] - fit_counts, sz1err[6000:11000] , label = "residuals", zorder = 1)
 
 ax[1].axhline(0, color = "black", linestyle = "--",zorder = 2)
 
@@ -105,28 +106,33 @@ ax[1].set_xlabel("channel")
 
 ax[1].legend()
 ax[0].title.set_text("photopeak plastic szintillator")
+
+
+fig.text(0.5,0, f'A = ({m_sz1.values["a"]:.2f} +- {m_sz1.errors["a"]:.2f}) ,'+' $\overline{n}$'+f' = ({m_sz1.values["mu"]:.2f} +- {m_sz1.errors["mu"]:.2f}), $δ$ = ({m_sz1.values["sigma"]:.2f} +- {m_sz1.errors["sigma"]:.2f}), $B$ = ({m_sz1.values["c"]:.2f} +- {m_sz1.errors["c"]:.2f}),  chi2/dof = {m_sz1.fval:.1f} / {m_sz1.ndof} = {m_sz1.fval/m_sz1.ndof:.1f} ', horizontalalignment = "center")
+
 plt.savefig("photopeak_plastic.pdf")
 
 plt.show()
 
+
 #%% sz2
 
-c_sz2 = cost.LeastSquares(channels[8500:11000], sz2[8500:11000], sz2err[8500:11000], gauss)
+c_sz2 = cost.LeastSquares(channels[8500:12500], sz2[8500:12500], sz2err[8500:12500], gauss)
 
-m_sz2 = iminuit.Minuit(c_sz2, mu = 9500, sigma=10, a = 1, c= 160)
+m_sz2 = iminuit.Minuit(c_sz2, mu = 9500, sigma=10, a = 100000, c= 160)
 
 print(m_sz2.migrad(ncall = 20000))
 fig, ax = plt.subplots(2, 1, figsize=(10,8), layout = "tight",gridspec_kw={'height_ratios': [5, 2]}, sharex = True)
-fit_counts = gauss(channels[8500:11000], m_sz2.values["mu"], m_sz2.values["sigma"], m_sz2.values["a"], m_sz2.values["c"])
+fit_counts = gauss(channels[8500:12500], m_sz2.values["mu"], m_sz2.values["sigma"], m_sz2.values["a"], m_sz2.values["c"])
 
-ax[0].errorbar(channels[8500:11000], sz2[8500:11000], sz2err[8500:11000], label = "measurements", fmt = ".", zorder= 1)
-ax[0].plot(channels[8500:11000], fit_counts, label = "fit", zorder = 2)
+ax[0].errorbar(channels[8500:12500], sz2[8500:12500], sz2err[8500:12500], label = "measurements", fmt = ".", zorder= 1)
+ax[0].plot(channels[8500:12500], fit_counts, label = "fit", zorder = 2)
 ax[0].axvline(m_sz2.values["mu"], label = "peak", zorder = 3, color = "black")
 ax[0].set_ylabel("counts")
 ax[0].legend()
 
 
-ax[1].errorbar(channels[8500:11000], sz2[8500:11000] - fit_counts, sz2err[8500:11000] , label = "residuals", zorder = 1)
+ax[1].errorbar(channels[8500:12500], sz2[8500:12500] - fit_counts, sz2err[8500:12500] , label = "residuals", zorder = 1)
 
 ax[1].axhline(0, color = "black", linestyle = "--",zorder = 2)
 
@@ -142,6 +148,8 @@ ax[1].set_xlabel("channel")
 
 ax[1].legend()
 ax[0].title.set_text("photopeak NaI:Tl szintillator")
+fig.text(0.5,0, f'A = ({m_sz2.values["a"]:.2f} +- {m_sz2.errors["a"]:.2f}) ,'+' $\overline{n}$'+f' = ({m_sz2.values["mu"]:.2f} +- {m_sz2.errors["mu"]:.2f}), $δ$ = ({m_sz2.values["sigma"]:.2f} +- {m_sz2.errors["sigma"]:.2f}), $B$ = ({m_sz2.values["c"]:.2f} +- {m_sz2.errors["c"]:.2f}),  chi2/dof = {m_sz2.fval:.1f} / {m_sz2.ndof} = {m_sz2.fval/m_sz2.ndof:.1f} ', horizontalalignment = "center")
+
 plt.savefig("photopeak_NaI.pdf")
 plt.show()
 #%% detection probability and light yield
@@ -158,7 +166,20 @@ peak_sz2_std = np.std(peak_sz2_val, ddof = 1)
 
 eta = peak_sz1_mean/peak_sz2_mean
 etaerr = np.sqrt((1/peak_sz2_mean*peak_sz1_std)**2 + (peak_sz1_mean/peak_sz2_mean**2*peak_sz2_std)**2)
-print(f"Detection probability: ({eta:.2f} +- {etaerr:.2f})")
+
+peak_sz1 = m_sz1.values["a"]*1/(m_sz1.values["sigma"] * np.sqrt(2*np.pi)) + m_sz1.values["c"]
+peak_sz2 = m_sz2.values["a"]*1/(m_sz2.values["sigma"] * np.sqrt(2*np.pi)) + m_sz2.values["c"]
+
+peak_sz1_err = np.sqrt((1/(m_sz1.values["sigma"] * np.sqrt(2*np.pi)) * m_sz1.errors["a"])**2 + (m_sz1.values["a"]*1/(m_sz1.values["sigma"]**2 * np.sqrt(2*np.pi)) * m_sz1.errors["sigma"])**2 + m_sz1.errors["c"]**2)
+peak_sz2_err = np.sqrt((1/(m_sz2.values["sigma"] * np.sqrt(2*np.pi)) * m_sz2.errors["a"])**2 + (m_sz2.values["a"]*1/(m_sz2.values["sigma"]**2 * np.sqrt(2*np.pi)) * m_sz2.errors["sigma"])**2 + m_sz2.errors["c"]**2)
+
+
+epsilon = peak_sz1/peak_sz2
+epsilonerr = np.sqrt((1/peak_sz2*peak_sz1_err)**2 + (peak_sz1/peak_sz2**2*peak_sz2_err)**2)
+
+
+
+print(f"Detection probability: ({epsilon:.2f} +- {epsilonerr:.2f})")
 
 print(m_sz1.values["mu"])
 print(m_sz2.values["mu"])
@@ -178,6 +199,14 @@ light_yield_err = np.sqrt(((732**10* 10.2)/(750**10 * 7.11))**2 * ((1/m_sz2.valu
 
 
 print(f"rel light yield: ({light_yield:.4f} +- {light_yield_err:.4f})")
+
+epsilon_u = ufloat(epsilon, epsilonerr)
+eta_u = ufloat(light_yield, light_yield_err)
+
+QE = epsilon_u * eta_u
+print(f"rel quantum efficiency:")
+print(QE)
+
 
 #%% gamma absorption
 
@@ -252,8 +281,10 @@ for i in range(len(measurements)):
 
      ax[(i//4)*2+1, i%4].title.set_text(f"$\mu$ = ({m_gamma.values['mu']:.2f}+-{m_gamma.errors['mu']:.2f}), $\chi^2/ndof$ = {m_gamma.fval/m_gamma.ndof:.2f} ")
      ax[(i//4)*2+1, i%4].legend()
-     peak_intensity.append(np.mean(measurements[i][int(m_gamma.values['mu'])-2:int(m_gamma.values['mu'])+2]))
-     p_i_err.append(np.std(measurements[i][int(m_gamma.values['mu'])-2:int(m_gamma.values['mu'])+2], ddof = 1))
+     #peak_intensity.append(np.mean(measurements[i][int(m_gamma.values['mu'])-2:int(m_gamma.values['mu'])+2]))
+     #p_i_err.append(np.std(measurements[i][int(m_gamma.values['mu'])-2:int(m_gamma.values['mu'])+2], ddof = 1))
+     peak_intensity.append(m_gamma.values["a"]/(np.sqrt(2*np.pi) *m_gamma.values["sigma"] ) + m_gamma.values["c"])
+     p_i_err.append(np.sqrt( m_gamma.errors["c"]**2 + (1/(np.sqrt(2*np.pi) *m_gamma.values["sigma"] ) * m_gamma.errors["a"])**2 + (m_gamma.values["a"]/(np.sqrt(2*np.pi) *m_gamma.values["sigma"]**2 ) * m_gamma.errors["sigma"])**2 ))
      
 
 plt.savefig("gamma_absorption_peaks.pdf")
@@ -300,6 +331,8 @@ ax[1].set_xlabel("$d_{Pb}$ [$mm$]")
 
 ax[1].legend()
 ax[0].title.set_text("absorption of $\gamma$-radiation by Pb")
+fig.text(0.5,0, f'$I_0$ = ({m_absorpt.values["I_0"]:.2f} +- {m_absorpt.errors["I_0"]:0.2f}) , $\mu$ = ({m_absorpt.values["mu"]:.3f} +- {m_absorpt.errors["mu"]:.3f}) $1/cm$, B = ({m_absorpt.values["c"]:.1f} +- {m_absorpt.errors["c"]:.1f}),  chi2/dof  = {m_absorpt.fval:.1f}/{m_absorpt.ndof} = {m_absorpt.fval/m_absorpt.ndof:.1f} ', horizontalalignment = "center")
+
 plt.savefig("absorption_gamma.pdf")
 plt.show()
 print("mass attenuation coefficient = mu / rho_Pb [cm^2/g](zitieren)")
